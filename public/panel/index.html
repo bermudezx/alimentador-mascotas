@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ESP32 - Servo</title>
+    <link rel="stylesheet" href="/panel/styles.css" />
+  </head>
+  <body data-tab="inicio">
+    <main class="shell">
+      <nav class="tabs" aria-label="Secciones">
+        <button type="button" data-tab-btn="inicio" class="tab-on">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
+          Inicio
+        </button>
+        <button type="button" data-tab-btn="ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>
+          Ajustes
+        </button>
+        <button type="button" data-tab-btn="historial">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg>
+          Historial
+        </button>
+        <button type="button" data-tab-btn="informacion">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/></svg>
+          Información
+        </button>
+      </nav>
+
+      <div class="cols">
+        <section class="view-control" aria-label="Control remoto">
+          <header class="top">
+            <div class="brand">
+              <span class="gear-badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>
+              </span>
+              <span>
+                <h1>ESP32 - Servo</h1>
+                <p class="muted">Control remoto</p>
+              </span>
+            </div>
+            <div class="top-side">
+              <span id="net-pill" class="pill">En línea</span>
+              <p id="header-ip" class="muted tiny">—</p>
+            </div>
+          </header>
+
+          <div class="hero">
+            <div class="panel stage">
+              <img class="servo-photo" src="/servo-sg5010.jpg" alt="Servo SG5010 de rotación continua" />
+              <div class="servo-glow"></div>
+              <svg id="spin" class="spin-arc" viewBox="0 0 200 200" aria-hidden="true">
+                <path d="M46 124c-8-22-2-48 24-64" />
+                <path d="M70 58l8 2-6 8" />
+                <path d="M154 62c14 16 12 42-12 58" />
+                <path d="M142 122l-2 8 8-4" />
+              </svg>
+            </div>
+            <div class="stack">
+              <article class="panel mini">
+                <span class="muted tiny">Estado ESP32</span>
+                <strong id="mini-board">En espera</strong>
+              </article>
+              <article class="panel mini">
+                <span class="muted tiny">Estado del servo</span>
+                <strong id="mini-servo">Detenido</strong>
+              </article>
+              <article class="panel mini">
+                <span class="muted tiny">Tiempo activo</span>
+                <strong id="uptime">00:00:00</strong>
+              </article>
+            </div>
+          </div>
+
+          <div class="powers">
+            <button type="button" id="btn-on" class="btn-power btn-on">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              ENCENDER
+              <small>Girar servo</small>
+            </button>
+            <button type="button" id="btn-off" class="btn-power btn-off" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              APAGAR
+              <small>Detener servo</small>
+            </button>
+          </div>
+
+          <section class="panel pad">
+            <h2>Control manual</h2>
+            <label class="speed-row">
+              <span class="muted">Velocidad</span>
+              <input id="speed" class="speed" type="range" min="0" max="100" value="100" aria-label="Velocidad" />
+              <span id="speed-label" class="speed-val">100 %</span>
+            </label>
+          </section>
+
+          <div class="tiles">
+            <article class="panel tile">
+              <span class="muted tiny">ESP32</span>
+              <strong id="tile-board">En espera</strong>
+            </article>
+            <article class="panel tile">
+              <span class="muted tiny">Wi-Fi</span>
+              <strong id="tile-ssid">—</strong>
+            </article>
+            <article class="panel tile">
+              <span class="muted tiny">Alimentación</span>
+              <strong id="tile-volt">5.0 V</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="view-status" aria-label="Estado del sistema">
+          <article class="panel pad-sm">
+            <div class="row-head">
+              <h2>Estado del sistema</h2>
+              <span id="status-pill" class="pill">En línea</span>
+            </div>
+            <div class="line"><span>Internet</span><span id="row-net">Conectado</span></div>
+            <div class="line"><span>MQTT</span><span id="row-mqtt">Conectando</span></div>
+            <div class="line"><span>ESP32</span><span id="row-board">En espera</span></div>
+            <div class="line"><span>Wi-Fi</span><span id="row-ssid">—</span></div>
+            <div class="line"><span>Dirección IP</span><span id="row-ip">—</span></div>
+            <div class="line"><span>Estado del servo</span><span id="row-servo">Detenido</span></div>
+            <div class="line"><span>Última acción</span><span id="row-last">—</span></div>
+            <div class="line"><span>Tiempo activo</span><span id="row-up">00:00:00</span></div>
+          </article>
+          <article class="panel pad-sm">
+            <div class="row-head">
+              <h2>Historial de acciones</h2>
+              <button type="button" class="text-btn" data-tab-btn="historial">Ver todo</button>
+            </div>
+            <div id="preview-history"></div>
+          </article>
+          <button type="button" class="panel device" data-tab-btn="informacion">
+            <span class="gear-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M8 17v2M16 17v2"/></svg>
+            </span>
+            <span>
+              <strong id="device-label">ESP32 + SG5010</strong>
+              <span class="muted">Control remoto de servo de rotación continua</span>
+            </span>
+          </button>
+        </section>
+
+        <section class="view-ajustes">
+          <h1 class="page-title">Ajustes</h1>
+          <article class="panel pad-sm">
+            <div class="line"><span>Internet</span><span id="set-net">Conectado</span></div>
+            <div class="line"><span>MQTT</span><span id="set-mqtt">Conectando</span></div>
+            <div class="line"><span>Placa ESP32</span><span id="set-board">En espera</span></div>
+            <div class="line"><span>Última señal</span><span id="set-seen">Esperando placa</span></div>
+          </article>
+          <article class="panel pad">
+            <div class="row-head">
+              <h2>MQTT</h2>
+              <button type="button" id="mqtt-toggle" class="switch" role="switch" aria-checked="true" aria-label="MQTT activo"><span></span></button>
+            </div>
+            <p class="muted">Java publica en el broker y la ESP32, en el puerto TCP, aplica la orden al momento.</p>
+            <label class="field-label">WebSocket del broker (referencia)
+              <input id="mqtt-url" class="field" value="wss://broker.emqx.io:8084/mqtt" />
+            </label>
+            <div class="split">
+              <label class="field-label">Host TCP de la placa
+                <input id="mqtt-host" class="field" value="broker.emqx.io" />
+              </label>
+              <label class="field-label">Puerto
+                <input id="mqtt-port" class="field" inputmode="numeric" value="1883" />
+              </label>
+            </div>
+            <label class="field-label">Tema base
+              <input id="mqtt-topic" class="field" value="mi-servo/sg5010" />
+            </label>
+            <p id="mqtt-topics" class="muted tiny"></p>
+            <div class="split">
+              <label class="field-label">Usuario
+                <input id="mqtt-user" class="field" autocomplete="off" />
+              </label>
+              <label class="field-label">Clave
+                <input id="mqtt-pass" class="field" type="password" autocomplete="off" />
+              </label>
+            </div>
+            <button type="button" id="mqtt-save" class="seg seg-wide">Guardar MQTT</button>
+          </article>
+          <article class="panel pad">
+            <h2>Enlace de la placa</h2>
+            <p class="muted">La ESP32 usa el mismo broker, puerto y tema. Este enlace HTTP queda como señal de vida.</p>
+            <p id="endpoint" class="endpoint">/api/device</p>
+            <button type="button" id="copy-endpoint" class="seg seg-wide">Copiar enlace</button>
+          </article>
+          <article class="panel pad-sm">
+            <div class="setting">
+              <span><strong>Confirmar al encender</strong><span class="muted">Pide confirmación antes de girar</span></span>
+              <button type="button" id="confirm-toggle" class="switch" role="switch" aria-checked="false" aria-label="Confirmar al encender"><span></span></button>
+            </div>
+          </article>
+          <article class="panel pad">
+            <h2>Sentido de giro</h2>
+            <div class="split">
+              <button type="button" id="dir-cw" class="seg seg-on">Horario</button>
+              <button type="button" id="dir-ccw" class="seg">Antihorario</button>
+            </div>
+            <h2 class="gap">Parada automática</h2>
+            <p class="muted">Apaga el servo solo, aunque cierres esta pantalla.</p>
+            <div class="stops" id="stops"></div>
+          </article>
+        </section>
+
+        <section class="view-historial">
+          <h1 class="page-title">Historial</h1>
+          <div class="filters">
+            <button type="button" data-filter="all" class="seg seg-on">Todas</button>
+            <button type="button" data-filter="on" class="seg">Encendido</button>
+            <button type="button" data-filter="off" class="seg">Apagado</button>
+          </div>
+          <article class="panel pad-sm" id="history-list"></article>
+        </section>
+
+        <section class="view-informacion">
+          <h1 class="page-title">Información</h1>
+          <article class="panel device">
+            <span class="gear-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/></svg>
+            </span>
+            <span>
+              <strong id="info-name">ESP32 + SG5010</strong>
+              <span class="muted">Control remoto de servo de rotación continua</span>
+            </span>
+          </article>
+          <article class="panel pad-sm" id="info-rows"></article>
+          <p class="muted note">Encender guarda la orden en el servidor Java y la publica por MQTT. La ESP32, en el mismo tema, mueve el SG5010. Apagar vuelve al pulso de parada de 1500 µs.</p>
+        </section>
+      </div>
+    </main>
+
+    <p id="toast" class="toast" role="status"></p>
+    <div id="ask" class="modal" hidden>
+      <div class="panel dialog" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+        <h2 id="ask-title">¿Encender el servo?</h2>
+        <p id="ask-body" class="muted"></p>
+        <div class="split">
+          <button type="button" id="ask-no" class="seg">Cancelar</button>
+          <button type="button" id="ask-yes" class="btn-power btn-on ask-yes">Encender</button>
+        </div>
+      </div>
+    </div>
+    <script src="/panel/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESP32 - Servo</title>
+<style>
+  :root {
+    --bg: #070b14;
+    --card: #121826;
+    --card-2: #0e1420;
+    --line: rgba(255,255,255,.06);
+    --text: #eef3fb;
+    --muted: #8b97ab;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --cyan: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    background: #1c2230;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    padding: 28px 16px 40px;
+    flex-wrap: wrap;
+  }
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 42px;
+    border: 10px solid #0a0d14;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 0 0 1px #2a3142;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 150px; height: 28px; background: #0a0d14; border-radius: 0 0 18px 18px; z-index: 5;
+  }
+  .status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 22px 6px; font-size: 14px; font-weight: 600;
+  }
+  .status .icons { display: flex; gap: 6px; opacity: .9; font-size: 12px; }
+  .urlbar {
+    margin: 6px 14px 10px; background: #1a2233; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px; color: #c5cedb; font-size: 13px; position: relative;
+  }
+  .urlbar .reload { position: absolute; right: 12px; opacity: .7; }
+  .screen { flex: 1; overflow: auto; padding: 4px 14px 18px; }
+  .screen::-webkit-scrollbar { width: 0; }
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .brand { display: flex; gap: 10px; align-items: center; }
+  .gear {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #1d4ed8, #0b1b3a);
+    display: grid; place-items: center; font-size: 20px;
+    box-shadow: 0 0 18px rgba(59,130,246,.35);
+  }
+  h1 { font-size: 22px; letter-spacing: -.3px; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .pill {
+    background: #123524; color: #4ade80; border: 1px solid #166534;
+    border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ip { text-align: right; color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 10px; }
+  .servo-card, .stat, .panel, .tile, .rowcard {
+    background: linear-gradient(180deg, #141b2b, #101622);
+    border: 1px solid var(--line); border-radius: 18px;
+  }
+  .servo-card {
+    min-height: 210px; display: grid; place-items: center; position: relative; overflow: hidden;
+  }
+  .servo-card::before {
+    content: ""; position: absolute; width: 140px; height: 140px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,248,.25), transparent 70%);
+  }
+  .sg {
+    width: 132px; position: relative; z-index: 1; filter: drop-shadow(0 10px 16px rgba(0,0,0,.45));
+  }
+  .spin { position: absolute; inset: 18px; border-radius: 16px; pointer-events: none; }
+  .spin i {
+    position: absolute; width: 34px; height: 34px; border: 3px solid transparent;
+    border-top-color: #38bdf8; border-radius: 50%; opacity: .85;
+  }
+  .spin i:first-child { left: 8px; top: 28px; transform: rotate(-30deg); }
+  .spin i:last-child { right: 18px; top: 8px; transform: rotate(140deg); border-top-color: #60a5fa; }
+  .stats { display: flex; flex-direction: column; gap: 8px; }
+  .stat { padding: 10px 12px; display: flex; gap: 8px; align-items: center; }
+  .stat .ico {
+    width: 28px; height: 28px; border-radius: 8px; background: #1c2638;
+    display: grid; place-items: center; font-size: 14px;
+  }
+  .stat b { display: block; font-size: 13px; }
+  .stat span { color: var(--muted); font-size: 11px; }
+  .ok { color: var(--green) !important; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  button.big {
+    border: 0; border-radius: 16px; color: white; padding: 16px 8px 14px; cursor: pointer;
+    font-weight: 800; letter-spacing: .4px;
+  }
+  button.big small { display: block; font-weight: 500; opacity: .9; margin-top: 2px; letter-spacing: 0; }
+  .on { background: linear-gradient(180deg, #34d399, #16a34a); box-shadow: 0 8px 24px rgba(34,197,94,.28); }
+  .off { background: linear-gradient(180deg, #f87171, #dc2626); box-shadow: 0 8px 24px rgba(239,68,68,.28); }
+  button.big:active { transform: scale(.98); }
+  .panel { padding: 14px; margin-bottom: 12px; }
+  .panel h3 { font-size: 16px; margin-bottom: 12px; }
+  .slider-row { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+  input[type=range] { flex: 1; accent-color: #3b82f6; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .tile { text-align: center; padding: 12px 6px; }
+  .tile .k { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .tile .v { font-weight: 700; margin-top: 2px; font-size: 13px; }
+  .tabs {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--line); margin: 0 -14px 12px; padding: 0 6px;
+  }
+  .tabs button {
+    background: none; border: 0; color: #9aa6ba; padding: 8px 0 10px; font-size: 12px; cursor: pointer;
+  }
+  .tabs button.active { color: var(--blue); box-shadow: inset 0 -2px 0 var(--blue); }
+  .tabs .ic { display: block; font-size: 16px; margin-bottom: 2px; }
+  .rowline {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px;
+  }
+  .rowline:last-child { border-bottom: 0; }
+  .left { display: flex; gap: 10px; align-items: center; }
+  .muted { color: var(--muted); }
+  .section-h { display: flex; justify-content: space-between; align-items: center; margin: 14px 2px 8px; }
+  .link { color: var(--blue); font-size: 13px; background: none; border: 0; cursor: pointer; }
+  .hist { display: flex; justify-content: space-between; padding: 9px 2px; font-size: 14px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .device {
+    display: flex; gap: 10px; align-items: center; margin-top: 8px;
+    background: #0d1422; border-radius: 12px; padding: 10px;
+  }
+  .badge {
+    width: 36px; height: 36px; border-radius: 10px; background: #10203a; color: var(--cyan);
+    display: grid; place-items: center;
+  }
+  .hidden { display: none; }
+  .toast {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #111827; border: 1px solid #334155; color: white;
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; opacity: 0; transition: .2s;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="phone" id="app">
+    <div class="notch"></div>
+    <div class="status"><span>10:24</span><span class="icons">▮▮▮ WiFi 🔋</span></div>
+    <div class="urlbar"><span>🔒 mi-servo.com</span><span class="reload">↻</span></div>
+    <div class="screen" id="view-control">
+      <div class="head">
+        <div class="brand">
+          <div class="gear">⚙</div>
+          <div>
+            <h1>ESP32 - Servo</h1>
+            <div class="sub">Control remoto</div>
+          </div>
+        </div>
+        <div>
+          <div class="pill">📶 Conectado</div>
+          <div class="ip" id="ip">192.168.1.25</div>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="servo-card">
+          <div class="spin" id="spin" style="opacity:0"><i></i><i></i></div>
+          <svg class="sg" viewBox="0 0 160 170">
+            <rect x="28" y="48" width="104" height="92" rx="8" fill="#1a1a1a" stroke="#333"/>
+            <rect x="18" y="70" width="16" height="28" rx="2" fill="#111"/>
+            <rect x="126" y="78" width="18" height="18" rx="2" fill="#222"/>
+            <rect x="48" y="92" width="64" height="28" rx="2" fill="#c9a227"/>
+            <text x="80" y="111" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1404">SG5010</text>
+            <rect x="62" y="28" width="36" height="24" rx="3" fill="#111"/>
+            <circle cx="80" cy="40" r="8" fill="#2a2a2a" stroke="#555"/>
+            <rect x="78" y="14" width="28" height="10" rx="2" fill="#161616" transform="rotate(-18 80 40)"/>
+          </svg>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="ico">📶</div><div><span>Estado ESP32</span><b class="ok" id="stEsp">Conectado</b></div></div>
+          <div class="stat"><div class="ico">⚙</div><div><span>Estado del servo</span><b id="stServo">Detenido</b></div></div>
+          <div class="stat"><div class="ico">⏱</div><div><span>Tiempo activo</span><b id="uptime">00:00:00</b></div></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="big on" onclick="cmd('on')">▶<br>ENCENDER<small>Girar servo</small></button>
+        <button class="big off" onclick="cmd('off')">■<br>APAGAR<small>Detener servo</small></button>
+      </div>
+      <div class="panel">
+        <h3>Control manual</h3>
+        <div class="slider-row">
+          <span>⏱ Velocidad</span>
+          <input id="speed" type="range" min="0" max="100" value="100" oninput="setSpeed(this.value)">
+          <span id="speedLabel">100 %</span>
+        </div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div>▣</div><div class="k">ESP32</div><div class="v ok">Online</div></div>
+        <div class="tile"><div>📶</div><div class="k">Wi-Fi</div><div class="v" id="ssid">Casa_Felipe</div></div>
+        <div class="tile"><div>⚡</div><div class="k">Alimentación</div><div class="v">5.0 V</div></div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+<script>
+const API = location.protocol.startsWith("http") && location.hostname && location.hostname !== "" ? "" : null;
+let running = false, started = 0, speed = 100;
+function toast(t){ const e=document.getElementById("toast"); e.textContent=t; e.classList.add("show"); setTimeout(()=>e.classList.remove("show"),1400); }
+function paint(){
+  document.getElementById("stServo").textContent = running ? "Girando" : "Detenido";
+  document.getElementById("stServo").style.color = running ? "#22c55e" : "";
+  document.getElementById("spin").style.opacity = running ? 1 : 0;
+}
+async function cmd(action){
+  running = action === "on";
+  if (running && !started) started = Date.now();
+  if (!running) started = 0;
+  paint();
+  toast(running ? "Servo encendido" : "Servo apagado");
+  try {
+    await fetch(`/api/servo?action=${action}&speed=${speed}`);
+  } catch(e) {}
+}
+async function setSpeed(v){
+  speed = Number(v);
+  document.getElementById("speedLabel").textContent = speed + " %";
+  try { await fetch(`/api/speed?value=${speed}`); } catch(e) {}
+}
+setInterval(()=>{
+  const el = document.getElementById("uptime");
+  if (!started){ el.textContent = "00:00:00"; return; }
+  const s = Math.floor((Date.now()-started)/1000);
+  const h = String(Math.floor(s/3600)).padStart(2,"0");
+  const m = String(Math.floor((s%3600)/60)).padStart(2,"0");
+  const ss = String(s%60).padStart(2,"0");
+  el.textContent = `${h}:${m}:${ss}`;
+}, 500);
+async function poll(){
+  try {
+    const r = await fetch("/api/status");
+    if (!r.ok) return;
+    const d = await r.json();
+    running = !!d.running;
+    speed = d.speed ?? speed;
+    document.getElementById("speed").value = speed;
+    document.getElementById("speedLabel").textContent = speed + " %";
+    document.getElementById("ssid").textContent = d.ssid || "Casa_Felipe";
+    document.getElementById("ip").textContent = d.ip || "192.168.1.25";
+    if (d.uptime) document.getElementById("uptime").textContent = d.uptime;
+    paint();
+  } catch(e) {}
+}
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>
