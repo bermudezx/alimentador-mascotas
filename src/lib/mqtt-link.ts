@@ -24,7 +24,7 @@ export const MQTT_DEFAULTS: MqttConfig = {
   url: "wss://broker.emqx.io:8084/mqtt",
   tcpHost: "broker.emqx.io",
   tcpPort: 1883,
-  topic: "mi-servo/sg5010",
+  topic: "alimentador-mascotas-felipe/servo",
   username: "",
   password: "",
 };
