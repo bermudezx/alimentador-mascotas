@@ -94,15 +94,24 @@ export function loadMqttConfig(): MqttConfig {
 }
 
 export function saveMqttConfig(config: MqttConfig) {
-  const next = {
-    ...config,
-    topic: sanitizeTopic(config.topic),
+  const next: MqttConfig = {
+    enabled: config.enabled !== false,
+    url: config.url.trim() || MQTT_DEFAULTS.url,
+    tcpHost: config.tcpHost.trim() || MQTT_DEFAULTS.tcpHost,
     tcpPort: Number(config.tcpPort) || 1883,
+    topic: sanitizeTopic(config.topic),
+    username: config.username.trim().slice(0, 64),
+    password: config.password.slice(0, 64),
   };
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.error("No se pudo guardar MQTT:", error);
+    return next;
+  }
 
-  void connectMqtt(onBoardState ?? undefined);
+  void connectMqtt();
 
   return next;
 }
