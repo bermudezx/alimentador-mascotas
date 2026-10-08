@@ -32,14 +32,19 @@ export const MQTT_DEFAULTS: MqttConfig = {
 const STORAGE_KEY = "mi-servo-mqtt";
 
 type Listener = () => void;
+type BoardStateListener = (state: string) => void;
+
 const listeners = new Set<Listener>();
+
 let status: MqttLinkStatus = "off";
 let client: MqttClient | null = null;
 let activeKey = "";
-let onBoardState: ((body: { ssid?: string; ip?: string; voltage?: string }) => void) | null = null;
+let onBoardState: BoardStateListener | null = null;
 
 function emit() {
-  for (const listener of listeners) listener();
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
 function setStatus(next: MqttLinkStatus) {
@@ -49,19 +54,39 @@ function setStatus(next: MqttLinkStatus) {
 }
 
 export function loadMqttConfig(): MqttConfig {
-  if (typeof localStorage === "undefined") return MQTT_DEFAULTS;
+  if (typeof localStorage === "undefined") {
+    return MQTT_DEFAULTS;
+  }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return MQTT_DEFAULTS;
+
+    if (!raw) {
+      return MQTT_DEFAULTS;
+    }
+
     const parsed = JSON.parse(raw) as Partial<MqttConfig>;
+
     return {
       enabled: parsed.enabled !== false,
-      url: typeof parsed.url === "string" && parsed.url ? parsed.url : MQTT_DEFAULTS.url,
-      tcpHost: typeof parsed.tcpHost === "string" && parsed.tcpHost ? parsed.tcpHost : MQTT_DEFAULTS.tcpHost,
+      url:
+        typeof parsed.url === "string" && parsed.url
+          ? parsed.url
+          : MQTT_DEFAULTS.url,
+      tcpHost:
+        typeof parsed.tcpHost === "string" && parsed.tcpHost
+          ? parsed.tcpHost
+          : MQTT_DEFAULTS.tcpHost,
       tcpPort: Number(parsed.tcpPort) || MQTT_DEFAULTS.tcpPort,
       topic: sanitizeTopic(parsed.topic || MQTT_DEFAULTS.topic),
-      username: typeof parsed.username === "string" ? parsed.username.slice(0, 64) : "",
-      password: typeof parsed.password === "string" ? parsed.password.slice(0, 64) : "",
+      username:
+        typeof parsed.username === "string"
+          ? parsed.username.slice(0, 64)
+          : "",
+      password:
+        typeof parsed.password === "string"
+          ? parsed.password.slice(0, 64)
+          : "",
     };
   } catch {
     return MQTT_DEFAULTS;
@@ -69,14 +94,25 @@ export function loadMqttConfig(): MqttConfig {
 }
 
 export function saveMqttConfig(config: MqttConfig) {
-  const next = { ...config, topic: sanitizeTopic(config.topic), tcpPort: Number(config.tcpPort) || 1883 };
+  const next = {
+    ...config,
+    topic: sanitizeTopic(config.topic),
+    tcpPort: Number(config.tcpPort) || 1883,
+  };
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+
   void connectMqtt(onBoardState ?? undefined);
+
   return next;
 }
 
 export function sanitizeTopic(value: string) {
-  const cleaned = value.replace(/[^\w./-]/g, "").replace(/^\/+|\/+$/g, "").slice(0, 64);
+  const cleaned = value
+    .replace(/[^\w./-]/g, "")
+    .replace(/^\/+|\/+$/g, "")
+    .slice(0, 64);
+
   return cleaned || MQTT_DEFAULTS.topic;
 }
 
@@ -94,20 +130,42 @@ export function getMqttStatus() {
 
 export function subscribeMqttStatus(listener: Listener) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function publishServo(command: ServoCommand) {
   const config = loadMqttConfig();
-  if (!config.enabled || !client?.connected) return false;
-  client.publish(cmdTopic(config), JSON.stringify(command), { qos: 0 });
+
+  if (!config.enabled || !client?.connected) {
+    return false;
+  }
+
+  // El ESP32 espera directamente "ON" o "OFF".
+  const message = command.running ? "ON" : "OFF";
+
+  client.publish(cmdTopic(config), message, {
+    qos: 0,
+  });
+
   return true;
 }
 
-export async function connectMqtt(onState?: (body: { ssid?: string; ip?: string; voltage?: string }) => void) {
-  if (onState) onBoardState = onState;
-  if (typeof window === "undefined") return;
+export async function connectMqtt(
+  onState?: (state: string) => void,
+) {
+  if (onState) {
+    onBoardState = onState;
+  }
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
   const config = loadMqttConfig();
+
   if (!config.enabled) {
     client?.end(true);
     client = null;
@@ -115,12 +173,19 @@ export async function connectMqtt(onState?: (body: { ssid?: string; ip?: string;
     setStatus("off");
     return;
   }
+
   const key = `${config.url}|${config.topic}|${config.username}`;
-  if (client && activeKey === key) return;
+
+  if (client && activeKey === key) {
+    return;
+  }
+
   client?.end(true);
   client = null;
+
   activeKey = key;
   setStatus("connecting");
+
   const next = mqtt.connect(config.url, {
     clientId: `panel-${Math.random().toString(16).slice(2, 10)}`,
     username: config.username || undefined,
@@ -130,27 +195,63 @@ export async function connectMqtt(onState?: (body: { ssid?: string; ip?: string;
     connectTimeout: 8000,
     clean: true,
   });
+
   client = next;
+
   next.on("connect", () => {
     if (client !== next) return;
+
     setStatus("on");
-    next.subscribe(stateTopic(config));
+
+    next.subscribe(stateTopic(config), {
+      qos: 0,
+    });
   });
+
   next.on("close", () => {
     if (client !== next) return;
-    setStatus(loadMqttConfig().enabled ? "connecting" : "off");
+
+    setStatus(
+      loadMqttConfig().enabled
+        ? "connecting"
+        : "off",
+    );
   });
+
   next.on("error", () => {
     if (client !== next) return;
+
     setStatus("error");
   });
+
   next.on("message", (_topic, payload) => {
     if (!onBoardState) return;
+
+    const message = payload.toString().trim();
+
+    // El ESP32 publica directamente "ON" o "OFF".
+    if (message === "ON" || message === "OFF") {
+      onBoardState(message);
+      return;
+    }
+
+    // Compatibilidad por si otro dispositivo publica JSON.
     try {
-      const body = JSON.parse(payload.toString()) as { ssid?: string; ip?: string; voltage?: string };
-      onBoardState(body);
+      const body = JSON.parse(message) as {
+        state?: string;
+        running?: boolean;
+      };
+
+      if (body.state === "ON" || body.state === "OFF") {
+        onBoardState(body.state);
+        return;
+      }
+
+      if (typeof body.running === "boolean") {
+        onBoardState(body.running ? "ON" : "OFF");
+      }
     } catch {
-      onBoardState({});
+      // Ignorar mensajes que no sean estados válidos.
     }
   });
 }

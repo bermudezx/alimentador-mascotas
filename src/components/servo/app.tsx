@@ -60,22 +60,15 @@ export function ServoApp() {
   const turnOff = useServoStore((s) => s.turnOff);
   const refresh = useServoStore((s) => s.refresh);
 
-  useEffect(() => {
-    void useServoStore.persist.rehydrate();
-    setEndpoint(`${window.location.origin}/api/device`);
-    void connectMqtt((body) => {
-      void fetch("/api/device", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ssid: body.ssid ?? "",
-          ip: body.ip ?? "",
-          voltage: body.voltage ?? "",
-        }),
-      }).then(() => useServoStore.getState().refresh());
-    });
-  }, []);
+ useEffect(() => {
+  void useServoStore.persist.rehydrate();
 
+  setEndpoint("");
+
+  void connectMqtt((state) => {
+    useServoStore.getState().applyMqttState(state);
+  });
+}, []);
   useEffect(() => {
     void refresh();
     const id = window.setInterval(() => void refresh(), 2000);
