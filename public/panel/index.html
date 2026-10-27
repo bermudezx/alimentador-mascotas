@@ -8,69 +8,48 @@
   </head>
   <body data-tab="inicio">
     
-    <style>
-      body:not(.panel-authenticated) .shell {
-        display: none !important;
-      }
+  
+<section id="panel-login" aria-label="Acceso al alimentador">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M5.5 11.5 12 5l6.5 6.5V20h-13z"/>
+          <path d="M9 20v-5h6v5"/>
+          <circle cx="5" cy="5" r="1.5"/>
+          <circle cx="19" cy="5" r="1.5"/>
+        </svg>
+      </div>
+      <p class="login-eyebrow">CONTROL INTELIGENTE</p>
+      <h1>Alimentador de mascotas</h1>
+      <p class="login-description">
+        Bienvenida de nuevo.<br>
+        Ingresa para acceder a tu panel de control.
+      </p>
+    </div>
 
-      #panel-login {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        box-sizing: border-box;
-      }
+    <form id="panel-login-form">
+      <label for="panel-password">Tu contraseña</label>
+      <div class="password-wrap">
+        <input
+          id="panel-password"
+          type="password"
+          placeholder="Escribe tu contraseña"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+      <button type="submit">Desbloquear panel&nbsp; →</button>
+      <p id="login-error" role="alert"></p>
+    </form>
 
-      #panel-login .login-card {
-        width: 100%;
-        max-width: 380px;
-        padding: 28px;
-        border-radius: 18px;
-        background: #fff;
-        color: #172033;
-        box-shadow: 0 12px 40px rgba(0, 0, 0, .14);
-        box-sizing: border-box;
-      }
+    <div class="login-footer">
+      <span>●</span>
+      ESP32 + SG5010 &nbsp;·&nbsp; Acceso al sistema
+    </div>
+  </div>
+</section>
 
-      #panel-login h1 {
-        margin-top: 0;
-        font-size: 25px;
-      }
-
-      #panel-login input {
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
-        margin: 10px 0 16px;
-        padding: 13px;
-        border: 1px solid #cbd5e1;
-        border-radius: 9px;
-        font-size: 16px;
-      }
-
-      #panel-login button {
-        width: 100%;
-        padding: 13px;
-        border: 0;
-        border-radius: 9px;
-        background: #4f46e5;
-        color: white;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      #login-error {
-        color: #b91c1c;
-        min-height: 20px;
-      }
-
-      body:not(.panel-authenticated) #toast,
-      body:not(.panel-authenticated) #ask {
-        display: none !important;
-      }
-    </style>
 
     <section id="panel-login" aria-label="Acceso al alimentador">
       <div class="login-card">
