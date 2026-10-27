@@ -220,7 +220,21 @@ void recibirMQTT(
     direccionHorario = false;
     actualizarServo();
   }
+  else if (mensaje.startsWith("AUTOSTOP:")) {
 
+    unsigned long segundos =
+      mensaje.substring(9).toInt();
+
+    autoStopMs = segundos * 1000UL;
+
+    if (girando) {
+      tiempoInicioGiro = millis();
+    }
+
+    Serial.print("Parada automatica configurada: ");
+    Serial.print(segundos);
+    Serial.println(" segundos");
+  }
   (void)topic;
 }
 
