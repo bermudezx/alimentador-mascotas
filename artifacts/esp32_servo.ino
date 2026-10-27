@@ -53,8 +53,8 @@ const int PIN_BOTON = 5;
 // SERVO
 // =====================================================
 
-const int GIRAR = 2000;
-const int PARAR = 1500;
+const int GIRAR = 1600;
+const int PARAR = 1800;
 
 // =====================================================
 // OBJETOS
