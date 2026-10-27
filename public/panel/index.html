@@ -7,8 +7,71 @@
     <link rel="stylesheet" href="/panel/styles.css" />
   </head>
   <body data-tab="inicio">
-    
-  
+ 
+<style>
+  body:not(.panel-authenticated) {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 15%, rgba(79,70,229,.20), transparent 48%), #080D19;
+    color: #F8FAFC;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  body:not(.panel-authenticated) .shell { display: none !important; }
+  #panel-login {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 24px; box-sizing: border-box;
+  }
+  #panel-login .login-card {
+    position: relative; width: 100%; max-width: 410px; padding: 38px;
+    overflow: hidden; border: 1px solid rgba(148,163,184,.20); border-radius: 24px;
+    background: linear-gradient(145deg,#151E32,#0E1525 75%); color: #F8FAFC;
+    box-shadow: 0 28px 80px rgba(0,0,0,.45); box-sizing: border-box;
+  }
+  #panel-login .login-card::before {
+    content: ""; position: absolute; top: 0; left: 12%; width: 76%; height: 2px;
+    background: linear-gradient(90deg,transparent,#8B5CF6,#22D3EE,transparent);
+  }
+  #panel-login .login-brand { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 30px; }
+  #panel-login .login-logo {
+    display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 19px;
+    border: 1px solid rgba(139,92,246,.45); border-radius: 22px;
+    background: linear-gradient(145deg,#30266A,#172746); color: #C4B5FD;
+    box-shadow: 0 0 35px rgba(99,102,241,.18);
+  }
+  #panel-login .login-logo svg { width: 38px; height: 38px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #panel-login .login-eyebrow { margin: 0 0 9px; color: #A5B4FC; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; }
+  #panel-login h1 { margin: 0; font-size: clamp(24px,5vw,29px); line-height: 1.2; letter-spacing: -.7px; color: #FFF; }
+  #panel-login .login-description { margin: 12px 0 0; color: #A7B3C8; font-size: 14px; line-height: 1.7; }
+  #panel-login label { display: block; margin-bottom: 10px; color: #E2E8F0; font-size: 13px; font-weight: 600; }
+  #panel-login input {
+    display: block; width: 100%; min-height: 51px; margin: 0 0 17px; padding: 0 15px;
+    border: 1px solid #35435C; border-radius: 12px; outline: none; background: #0A1120;
+    color: #FFF; font-size: 15px; box-sizing: border-box; transition: border-color .2s,box-shadow .2s;
+  }
+  #panel-login input::placeholder { color: #64748B; }
+  #panel-login input:focus { border-color: #8B5CF6; box-shadow: 0 0 0 3px rgba(139,92,246,.16); }
+  #panel-login button {
+    width: 100%; min-height: 51px; padding: 13px 16px; border: 1px solid rgba(196,181,253,.2);
+    border-radius: 12px; background: linear-gradient(100deg,#6258F5,#7C3AED); color: #FFF;
+    font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 24px rgba(99,102,241,.22);
+    transition: transform .2s,filter .2s;
+  }
+  #panel-login button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  #panel-login button:active { transform: translateY(0); }
+  #login-error { min-height: 20px; margin: 12px 0 0; color: #FDA4AF; font-size: 13px; text-align: center; }
+  #panel-login .login-footer {
+    display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 25px;
+    padding-top: 19px; border-top: 1px solid rgba(148,163,184,.13); color: #8190A8; font-size: 11px;
+  }
+  #panel-login .login-footer span { color: #A5B4FC; }
+  body:not(.panel-authenticated) #toast,
+  body:not(.panel-authenticated) #ask { display: none !important; }
+  @media (max-width: 480px) {
+    #panel-login { padding: 18px; }
+    #panel-login .login-card { padding: 28px 23px; border-radius: 20px; }
+  }
+</style>
+
 <section id="panel-login" aria-label="Acceso al alimentador">
   <div class="login-card">
     <div class="login-brand">
@@ -49,27 +112,6 @@
     </div>
   </div>
 </section>
-
-
-    <section id="panel-login" aria-label="Acceso al alimentador">
-      <div class="login-card">
-        <h1>Alimentador de mascotas</h1>
-        <p>Ingresa tu contraseña para acceder al panel de control.</p>
-
-        <form id="panel-login-form">
-          <label for="panel-password">Contraseña</label>
-          <input
-            id="panel-password"
-            type="password"
-            placeholder="Escribe tu contraseña"
-            autocomplete="current-password"
-            required
-          />
-          <button type="submit">Ingresar</button>
-          <p id="login-error" role="alert"></p>
-        </form>
-      </div>
-    </section>
 
     <main class="shell">
       <nav class="tabs" aria-label="Secciones">
@@ -311,7 +353,7 @@
     
     <script>
       (() => {
-        const CLAVE_PANEL = 1120955322;
+        const CLAVE_PANEL = "1120955322";
 
         const form = document.getElementById("panel-login-form");
         const input = document.getElementById("panel-password");
@@ -357,8 +399,5 @@
         input.focus();
       })();
     </script>
-</body>
-</html>
-
   </body>
 </html>
