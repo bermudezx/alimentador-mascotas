@@ -438,10 +438,22 @@ void loop() {
   // 2. MQTT
   conectarMQTT();
 
-  if (
-    mqtt.connected()
-  ) {
+  if (mqtt.connected()) {
     mqtt.loop();
+  }
+
+  // 3. PARADA AUTOMATICA
+  if (
+    girando &&
+    autoStopMs > 0 &&
+    millis() - tiempoInicioGiro >= autoStopMs
+  ) {
+    girando = false;
+
+    actualizarServo();
+    publicarEstado();
+
+    Serial.println("PARADA AUTOMATICA");
   }
 
   delay(5);
