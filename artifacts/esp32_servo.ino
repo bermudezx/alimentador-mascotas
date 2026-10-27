@@ -313,7 +313,13 @@ void leerBoton() {
       digitalRead(PIN_BOTON) == LOW
     ) {
 
-      girando = !girando;
+            girando = !girando;
+
+      if (girando) {
+        tiempoInicioGiro = millis();
+      } else {
+        tiempoInicioGiro = 0;
+      }
 
       actualizarServo();
 
