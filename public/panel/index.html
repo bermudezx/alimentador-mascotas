@@ -301,6 +301,27 @@
             </div>
           </article>
           <article class="panel pad">
+            <h2>Programación de comidas</h2>
+            <p class="muted">Los horarios se guardan en el ESP32 y se ejecutan aunque cierres esta página. Hora de Colombia (UTC−5). Duración de 1 a 120 segundos.</p>
+            <div class="schedule-list">
+              <div class="schedule-row">
+                <label class="setting"><span><strong>Comida 1</strong><span class="muted">Activar horario</span></span><input id="sched-enabled-0" type="checkbox" checked /></label>
+                <div class="split"><label class="field-label">Hora<input class="field" id="sched-time-0" type="time" value="07:00" required /></label><label class="field-label">Duración (seg.)<input class="field" id="sched-duration-0" type="number" min="1" max="120" value="3" required /></label></div>
+              </div>
+              <div class="schedule-row">
+                <label class="setting"><span><strong>Comida 2</strong><span class="muted">Activar horario</span></span><input id="sched-enabled-1" type="checkbox" /></label>
+                <div class="split"><label class="field-label">Hora<input class="field" id="sched-time-1" type="time" value="13:00" required /></label><label class="field-label">Duración (seg.)<input class="field" id="sched-duration-1" type="number" min="1" max="120" value="3" required /></label></div>
+              </div>
+              <div class="schedule-row">
+                <label class="setting"><span><strong>Comida 3</strong><span class="muted">Activar horario</span></span><input id="sched-enabled-2" type="checkbox" /></label>
+                <div class="split"><label class="field-label">Hora<input class="field" id="sched-time-2" type="time" value="19:00" required /></label><label class="field-label">Duración (seg.)<input class="field" id="sched-duration-2" type="number" min="1" max="120" value="3" required /></label></div>
+              </div>
+            </div>
+            <button type="button" id="sched-save" class="seg seg-wide">Guardar horarios en el ESP32</button>
+            <p class="muted tiny">La primera sincronización de hora requiere Wi-Fi e internet. Prueba la duración con una porción pequeña antes de dejarlo funcionando solo.</p>
+          </article>
+
+          <article class="panel pad">
             <h2>Sentido de giro</h2>
             <div class="split">
               <button type="button" id="dir-cw" class="seg seg-on">Horario</button>
