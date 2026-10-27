@@ -815,7 +815,45 @@ async function turnOn() {
   }
 }
 
+function loadScheduleForm() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem("alimentador-schedules") || "[]"); } catch { saved = []; }
+  for (let i = 0; i < 3; i++) {
+    const item = saved[i] || { enabled: i === 0, time: ["07:00", "13:00", "19:00"][i], duration: 3 };
+    const enabled = $(`sched-enabled-${i}`);
+    const time = $(`sched-time-${i}`);
+    const duration = $(`sched-duration-${i}`);
+    if (enabled) enabled.checked = Boolean(item.enabled);
+    if (time) time.value = item.time || ["07:00", "13:00", "19:00"][i];
+    if (duration) duration.value = String(item.duration || 3);
+  }
+}
+
+function saveSchedules() {
+  const schedules = [];
+  for (let i = 0; i < 3; i++) {
+    const time = $(`sched-time-${i}`).value;
+    const duration = Number($(`sched-duration-${i}`).value);
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !Number.isInteger(duration) || duration < 1 || duration > 120) {
+      toast(`Revisa la hora o duración de la comida ${i + 1}`);
+      return;
+    }
+    const [hour, minute] = time.split(":").map(Number);
+    schedules.push({ enabled: $(`sched-enabled-${i}`).checked, time, duration });
+    const command = `SCHED:${i}:${$(`sched-enabled-${i}`).checked ? 1 : 0}:${hour}:${minute}:${duration}`;
+    if (!publishCommand(command)) {
+      toast("No se enviaron los horarios. Revisa la conexión MQTT.");
+      return;
+    }
+  }
+  localStorage.setItem("alimentador-schedules", JSON.stringify(schedules));
+  toast("Horarios enviados al ESP32");
+}
+
 function bind() {
+  loadScheduleForm();
+  const scheduleSave = $("sched-save");
+  if (scheduleSave) scheduleSave.addEventListener("click", saveSchedules);
   document
     .querySelectorAll(
       "[data-tab-btn]"
@@ -1152,4 +1190,4 @@ window.addEventListener(
       mqttClient.reconnect();
     }
   }
-);ssss
+);
