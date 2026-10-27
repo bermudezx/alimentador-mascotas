@@ -76,6 +76,13 @@ bool botonAnterior = HIGH;
 
 unsigned long ultimoIntentoMQTT = 0;
 
+// Configuración del servo
+int velocidad = 100;
+bool direccionHorario = true;
+
+// Parada automática
+unsigned long tiempoInicioGiro = 0;
+unsigned long autoStopMs = 0;
 // =====================================================
 // CONTROLAR SERVO
 // =====================================================
