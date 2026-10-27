@@ -329,7 +329,57 @@
         </div>
       </div>
     </div>
-    <script src="/panel/mqtt.min.js"></script>
-<script src="/panel/app.js"></script>
+    
+    <script>
+      (() => {
+        const CLAVE_PANEL = "CAMBIA_ESTA_CLAVE";
+
+        const form = document.getElementById("panel-login-form");
+        const input = document.getElementById("panel-password");
+        const error = document.getElementById("login-error");
+
+        function cargarPanel() {
+          if (document.body.classList.contains("panel-authenticated")) return;
+
+          document.body.classList.add("panel-authenticated");
+          document.getElementById("panel-login").style.display = "none";
+
+          const mqtt = document.createElement("script");
+          mqtt.src = "/panel/mqtt.min.js";
+
+          mqtt.onload = () => {
+            const app = document.createElement("script");
+            app.src = "/panel/app.js";
+            document.body.appendChild(app);
+          };
+
+          mqtt.onerror = () => {
+            error.textContent = "No se pudo cargar la conexión MQTT. Recarga la página.";
+            document.body.classList.remove("panel-authenticated");
+            document.getElementById("panel-login").style.display = "flex";
+          };
+
+          document.body.appendChild(mqtt);
+        }
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+
+          if (input.value === CLAVE_PANEL) {
+            error.textContent = "";
+            cargarPanel();
+          } else {
+            error.textContent = "Contraseña incorrecta.";
+            input.value = "";
+            input.focus();
+          }
+        });
+
+        input.focus();
+      })();
+    </script>
+</body>
+</html>
+
   </body>
 </html>
