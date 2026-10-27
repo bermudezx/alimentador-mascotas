@@ -1,36 +1,28 @@
 
 /*
   ALIMENTADOR DE MASCOTAS
-  ESP32 + SG5010 de rotacion continua + WiFiManager + MQTT
+  ESP32 + SG5010 + WiFiManager + MQTT
 
   Wi-Fi:
-    - Conecta a una red guardada.
-    - Si no existe, abre ALIMENTADOR-SETUP.
-    - Mantener el boton 5 segundos restablece la configuracion Wi-Fi.
+    - Guarda las credenciales al configurar la red.
+    - Intenta conectarse automaticamente al arrancar.
+    - Abre ALIMENTADOR-SETUP si no consigue conectar.
+    - Boton presionado 5 segundos: borra el Wi-Fi guardado.
 
   MQTT:
-    Broker: broker.emqx.io:1883
-    Comandos: alimentador-mascotas-felipe/servo/cmd
-    Estado:   alimentador-mascotas-felipe/servo/state
+    Broker: broker.emqx.io
+    Puerto: 1883
+    Comando: alimentador-mascotas-felipe/servo/cmd
+    Estado:  alimentador-mascotas-felipe/servo/state
 
   Pines:
-    Servo -> GPIO 19
-    LED   -> GPIO 18
-    Boton -> GPIO 5 (INPUT_PULLUP)
+    Servo: GPIO 19
+    LED:   GPIO 18
+    Boton: GPIO 5 (conectado a GND)
 
-  Calibracion confirmada:
+  Calibracion:
     GIRAR = 1600 us
     PARAR = 1800 us
-
-  Comandos MQTT:
-    ON
-    OFF
-    SPEED:0-100
-    DIR:CW
-    DIR:CCW
-    AUTOSTOP:segundos
-
-  AUTOSTOP:0 desactiva la parada automatica.
 */
 
 #include <WiFi.h>
@@ -52,23 +44,19 @@ const char* MQTT_TOPIC_STATE =
   "alimentador-mascotas-felipe/servo/state";
 
 // =====================================================
-// PINES
+// PINES Y SERVO
 // =====================================================
 
 const int PIN_SERVO = 19;
 const int PIN_LED = 18;
 const int PIN_BOTON = 5;
 
-// =====================================================
-// CALIBRACION DEL SERVO
-// =====================================================
-
 const int GIRAR = 1600;
 const int PARAR = 1800;
 
-// Pulso opuesto calculado simetricamente respecto
-// al pulso de parada. Debe verificarse en el servo.
-const int GIRAR_OPUESTO = PARAR + (PARAR - GIRAR);
+// Se conserva el sentido opuesto usado en la version
+// anterior. Verificar el comportamiento fisico.
+const int GIRAR_OPUESTO = 2000;
 
 // =====================================================
 // OBJETOS
@@ -80,7 +68,7 @@ PubSubClient mqtt(espClient);
 WiFiManager wm;
 
 // =====================================================
-// VARIABLES
+// VARIABLES DE CONTROL
 // =====================================================
 
 bool girando = false;
@@ -88,12 +76,13 @@ int velocidad = 100;
 bool direccionHorario = true;
 
 unsigned long ultimoIntentoMQTT = 0;
+unsigned long ultimoIntentoWiFi = 0;
 
 // Parada automatica
 unsigned long tiempoInicioGiro = 0;
 unsigned long autoStopMs = 0;
 
-// Boton: pulsacion corta y pulsacion larga
+// Boton
 bool botonPresionado = false;
 bool pulsacionLargaAtendida = false;
 unsigned long inicioBoton = 0;
@@ -118,11 +107,11 @@ void actualizarServo() {
   int pulso;
 
   if (direccionHorario) {
-    // Desde parada (1800) hasta giro calibrado (1600).
     pulso = map(velocidad, 0, 100, PARAR, GIRAR);
   } else {
-    // Direccion opuesta estimada de forma simetrica.
-    pulso = map(velocidad, 0, 100, PARAR, GIRAR_OPUESTO);
+    pulso = map(
+      velocidad, 0, 100, PARAR, GIRAR_OPUESTO
+    );
   }
 
   servo360.writeMicroseconds(pulso);
@@ -131,28 +120,6 @@ void actualizarServo() {
   Serial.print(velocidad);
   Serial.print("% | Pulso: ");
   Serial.println(pulso);
-}
-
-// =====================================================
-// ENCENDER Y APAGAR
-// =====================================================
-
-void encenderServo() {
-  if (!girando) {
-    girando = true;
-    tiempoInicioGiro = millis();
-  }
-
-  actualizarServo();
-  publicarEstado();
-}
-
-void apagarServo() {
-  girando = false;
-  tiempoInicioGiro = 0;
-
-  actualizarServo();
-  publicarEstado();
 }
 
 // =====================================================
@@ -179,7 +146,129 @@ void publicarEstado() {
 }
 
 // =====================================================
-// PROCESAR COMANDOS MQTT
+// ENCENDER Y APAGAR
+// =====================================================
+
+void encenderServo() {
+  if (!girando) {
+    girando = true;
+    tiempoInicioGiro = millis();
+  }
+
+  actualizarServo();
+  publicarEstado();
+}
+
+void apagarServo() {
+  girando = false;
+  tiempoInicioGiro = 0;
+
+  actualizarServo();
+  publicarEstado();
+}
+
+// =====================================================
+// RESTABLECER WIFI
+// =====================================================
+
+void restablecerWiFi() {
+  Serial.println();
+  Serial.println("==============================");
+  Serial.println("RESTABLECIENDO CONFIGURACION");
+  Serial.println("BORRANDO WIFI GUARDADO");
+  Serial.println("==============================");
+
+  // Detener el servo
+  girando = false;
+  tiempoInicioGiro = 0;
+  actualizarServo();
+  publicarEstado();
+
+  if (mqtt.connected()) {
+    mqtt.disconnect();
+  }
+
+  // Borrar credenciales de WiFiManager
+  wm.resetSettings();
+
+  // Borrar tambien credenciales de la pila Wi-Fi
+  WiFi.disconnect(true, true);
+
+  delay(1000);
+
+  Serial.println("Wi-Fi guardado eliminado");
+  Serial.println("Reiniciando ESP32...");
+
+  delay(500);
+  ESP.restart();
+}
+
+// =====================================================
+// BOTON FISICO
+// Pulsacion corta: encender/apagar
+// Pulsacion de 5 segundos: borrar Wi-Fi
+// =====================================================
+
+void leerBoton() {
+  bool lectura = digitalRead(PIN_BOTON);
+  unsigned long ahora = millis();
+
+  // Detectar nueva pulsacion
+  if (lectura == LOW && !botonPresionado) {
+    delay(TIEMPO_DEBOUNCE);
+
+    if (digitalRead(PIN_BOTON) == LOW) {
+      botonPresionado = true;
+      pulsacionLargaAtendida = false;
+      inicioBoton = millis();
+
+      Serial.println("Boton presionado");
+      Serial.println(
+        "Mantener 5 segundos para borrar Wi-Fi"
+      );
+    }
+  }
+
+  // Comprobar pulsacion larga
+  if (
+    botonPresionado &&
+    digitalRead(PIN_BOTON) == LOW
+  ) {
+    ahora = millis();
+
+    if (
+      !pulsacionLargaAtendida &&
+      ahora - inicioBoton >= TIEMPO_RESET_WIFI
+    ) {
+      pulsacionLargaAtendida = true;
+
+      Serial.println("Pulsacion larga detectada");
+      restablecerWiFi();
+      return;
+    }
+  }
+
+  // Detectar liberacion del boton
+  if (
+    botonPresionado &&
+    digitalRead(PIN_BOTON) == HIGH
+  ) {
+    botonPresionado = false;
+
+    if (!pulsacionLargaAtendida) {
+      Serial.println("Pulsacion corta");
+
+      if (girando) {
+        apagarServo();
+      } else {
+        encenderServo();
+      }
+    }
+  }
+}
+
+// =====================================================
+// COMANDOS MQTT
 // =====================================================
 
 void recibirMQTT(
@@ -200,11 +289,10 @@ void recibirMQTT(
 
   mensaje.trim();
 
-  Serial.println();
   Serial.print("Comando recibido: ");
   Serial.println(mensaje);
 
-  // Encender
+  // ENCENDER
   if (
     mensaje == "ON" ||
     mensaje == "on" ||
@@ -213,7 +301,7 @@ void recibirMQTT(
     encenderServo();
   }
 
-  // Apagar
+  // APAGAR
   else if (
     mensaje == "OFF" ||
     mensaje == "off" ||
@@ -222,12 +310,13 @@ void recibirMQTT(
     apagarServo();
   }
 
-  // Velocidad
+  // VELOCIDAD
   else if (mensaje.startsWith("SPEED:")) {
     String valor = mensaje.substring(6);
+    valor.trim();
 
     if (valor.length() == 0) {
-      Serial.println("Error: velocidad vacia");
+      Serial.println("Velocidad vacia");
       return;
     }
 
@@ -236,12 +325,12 @@ void recibirMQTT(
     if (velocidad == 0) {
       apagarServo();
     } else {
-      // No enciende el servo si estaba apagado.
+      // No enciende el servo si estaba apagado
       actualizarServo();
     }
   }
 
-  // Direccion
+  // DIRECCION
   else if (mensaje == "DIR:CW") {
     direccionHorario = true;
     actualizarServo();
@@ -252,13 +341,13 @@ void recibirMQTT(
     actualizarServo();
   }
 
-  // Parada automatica
+  // PARADA AUTOMATICA
   else if (mensaje.startsWith("AUTOSTOP:")) {
     String valor = mensaje.substring(9);
     valor.trim();
 
     if (valor.length() == 0) {
-      Serial.println("Error: tiempo automatico vacio");
+      Serial.println("Tiempo automatico vacio");
       return;
     }
 
@@ -267,8 +356,7 @@ void recibirMQTT(
 
     autoStopMs = (unsigned long)segundos * 1000UL;
 
-    // El nuevo tiempo empieza a contar desde este momento
-    // si el servo ya esta girando.
+    // Reiniciar el conteo si ya esta girando
     if (girando) {
       tiempoInicioGiro = millis();
     }
@@ -276,15 +364,30 @@ void recibirMQTT(
     Serial.print("Parada automatica: ");
     Serial.print(segundos);
     Serial.println(" segundos");
-
-    if (segundos == 0) {
-      Serial.println("Parada automatica desactivada");
-    }
   }
 
   else {
-    Serial.println("Comando MQTT no reconocido");
+    Serial.println("Comando no reconocido");
   }
+}
+
+// =====================================================
+// RECONEXION WIFI
+// =====================================================
+
+void mantenerWiFi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return;
+  }
+
+  if (millis() - ultimoIntentoWiFi < 10000) {
+    return;
+  }
+
+  ultimoIntentoWiFi = millis();
+
+  Serial.println("Wi-Fi desconectado. Reconectando...");
+  WiFi.reconnect();
 }
 
 // =====================================================
@@ -292,7 +395,10 @@ void recibirMQTT(
 // =====================================================
 
 void conectarMQTT() {
-  if (WiFi.status() != WL_CONNECTED || mqtt.connected()) {
+  if (
+    WiFi.status() != WL_CONNECTED ||
+    mqtt.connected()
+  ) {
     return;
   }
 
@@ -305,7 +411,10 @@ void conectarMQTT() {
   Serial.println("Intentando conectar MQTT...");
 
   String clientID = "ESP32-Alimentador-";
-  clientID += String((uint32_t)ESP.getEfuseMac(), HEX);
+  clientID += String(
+    (uint32_t)ESP.getEfuseMac(),
+    HEX
+  );
 
   if (mqtt.connect(clientID.c_str())) {
     Serial.println("MQTT conectado");
@@ -314,7 +423,7 @@ void conectarMQTT() {
       Serial.print("Suscrito a: ");
       Serial.println(MQTT_TOPIC_CMD);
     } else {
-      Serial.println("No se pudo suscribir al topico");
+      Serial.println("Error al suscribirse");
     }
 
     publicarEstado();
@@ -325,85 +434,7 @@ void conectarMQTT() {
 }
 
 // =====================================================
-// RESTABLECER WIFI
-// =====================================================
-
-void restablecerWiFi() {
-  Serial.println("Restableciendo configuracion Wi-Fi...");
-
-  // Detener antes de reiniciar.
-  girando = false;
-  tiempoInicioGiro = 0;
-  actualizarServo();
-
-  if (mqtt.connected()) {
-    publicarEstado();
-    mqtt.disconnect();
-  }
-
-  wm.resetSettings();
-
-  delay(500);
-  ESP.restart();
-}
-
-// =====================================================
-// BOTON FISICO
-// Pulsacion corta: alterna encendido/apagado.
-// Pulsacion de 5 segundos: restablece el Wi-Fi.
-// =====================================================
-
-
-void leerBoton() {
-  bool lectura = digitalRead(PIN_BOTON);
-  unsigned long ahora = millis();
-
-  // Detectar la primera pulsacion
-  if (lectura == LOW && !botonPresionado) {
-    delay(TIEMPO_DEBOUNCE);
-
-    if (digitalRead(PIN_BOTON) == LOW) {
-      botonPresionado = true;
-      pulsacionLargaAtendida = false;
-      inicioBoton = millis();
-
-      Serial.println("Boton presionado");
-      Serial.println("Mantener 5 segundos para borrar Wi-Fi");
-    }
-  }
-
-  // Comprobar si sigue presionado
-  if (botonPresionado && digitalRead(PIN_BOTON) == LOW) {
-    ahora = millis();
-
-    if (!pulsacionLargaAtendida &&
-        ahora - inicioBoton >= TIEMPO_RESET_WIFI) {
-      pulsacionLargaAtendida = true;
-
-      Serial.println("Pulsacion larga: restableciendo Wi-Fi");
-      restablecerWiFi();
-    }
-  }
-
-  // Detectar cuando se suelta el boton
-  if (botonPresionado && digitalRead(PIN_BOTON) == HIGH) {
-    botonPresionado = false;
-
-    if (!pulsacionLargaAtendida) {
-      Serial.println("Pulsacion corta");
-
-      if (girando) {
-        apagarServo();
-      } else {
-        encenderServo();
-      }
-    }
-  }
-}
-
-
-// =====================================================
-// CONFIGURAR PARADA AUTOMATICA
+// PARADA AUTOMATICA
 // =====================================================
 
 void revisarParadaAutomatica() {
@@ -427,7 +458,7 @@ void setup() {
 
   Serial.println();
   Serial.println("==============================");
-  Serial.println("   ALIMENTADOR DE MASCOTAS");
+  Serial.println("ALIMENTADOR DE MASCOTAS");
   Serial.println("==============================");
 
   pinMode(PIN_LED, OUTPUT);
@@ -435,24 +466,37 @@ void setup() {
 
   pinMode(PIN_BOTON, INPUT_PULLUP);
 
-  // Wi-Fi
+  // ---------------------------------------------------
+  // WIFI
+  // ---------------------------------------------------
+
+  WiFi.mode(WIFI_STA);
+  WiFi.persistent(true);
+  WiFi.setAutoReconnect(true);
+
   wm.setConfigPortalTimeout(180);
 
   Serial.println("Configurando Wi-Fi...");
 
+  // Intenta la red guardada y abre portal si hace falta
   bool conectado = wm.autoConnect("ALIMENTADOR-SETUP");
 
   if (!conectado) {
-    Serial.println("No se pudo configurar Wi-Fi");
+    Serial.println("No se pudo conectar al Wi-Fi");
     delay(1000);
     ESP.restart();
   }
 
   Serial.println("Wi-Fi conectado");
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
 
-  // Servo
+  // ---------------------------------------------------
+  // SERVO
+  // ---------------------------------------------------
+
   servo360.setPeriodHertz(50);
   servo360.attach(PIN_SERVO, 500, 2500);
 
@@ -461,7 +505,10 @@ void setup() {
 
   Serial.println("Servo detenido");
 
+  // ---------------------------------------------------
   // MQTT
+  // ---------------------------------------------------
+
   mqtt.setServer(MQTT_SERVER, MQTT_PORT);
   mqtt.setCallback(recibirMQTT);
   mqtt.setBufferSize(256);
@@ -476,6 +523,7 @@ void setup() {
 void loop() {
   leerBoton();
 
+  mantenerWiFi();
   conectarMQTT();
 
   if (mqtt.connected()) {
