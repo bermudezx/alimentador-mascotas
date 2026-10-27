@@ -735,9 +735,16 @@ function post(body) {
   if (
     body.op === "speed"
   ) {
-    panel.speed =
-      Number(body.speed) || 0;
+    const speed = Math.max(
+      0,
+      Math.min(100, Number(body.speed) || 0)
+    );
 
+    if (!publishCommand(`SPEED:${speed}`)) {
+      return Promise.reject(new Error("MQTT"));
+    }
+
+    panel.speed = speed;
     paint();
 
     return Promise.resolve();
@@ -746,27 +753,35 @@ function post(body) {
   if (
     body.op === "direction"
   ) {
-    panel.direction =
-      body.direction === "ccw"
-        ? "ccw"
-        : "cw";
+    const direction =
+      body.direction === "ccw" ? "ccw" : "cw";
 
+    if (!publishCommand(`DIR:${direction.toUpperCase()}`)) {
+      return Promise.reject(new Error("MQTT"));
+    }
+
+    panel.direction = direction;
     paint();
 
     return Promise.resolve();
   }
-
-  if (
+   if (
     body.op === "autostop"
   ) {
-    panel.autoStopSec =
-      Number(body.autoStopSec) || 0;
+    const autoStopSec = Math.max(
+      0,
+      Number(body.autoStopSec) || 0
+    );
 
+    if (!publishCommand(`AUTOSTOP:${autoStopSec}`)) {
+      return Promise.reject(new Error("MQTT"));
+    }
+
+    panel.autoStopSec = autoStopSec;
     paint();
 
     return Promise.resolve();
   }
-
   if (
     body.op === "mqtt"
   ) {
