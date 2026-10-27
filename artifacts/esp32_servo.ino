@@ -174,14 +174,13 @@ void recibirMQTT(
   Serial.println(mensaje);
   Serial.println("======================");
 
-  if (
+    if (
     mensaje == "ON" ||
     mensaje == "on" ||
     mensaje == "1"
   ) {
-
     girando = true;
-
+    tiempoInicioGiro = millis();
     actualizarServo();
     publicarEstado();
 
@@ -193,13 +192,33 @@ void recibirMQTT(
     mensaje == "off" ||
     mensaje == "0"
   ) {
-
     girando = false;
-
     actualizarServo();
     publicarEstado();
 
     Serial.println(">>> ORDEN REMOTA: APAGAR");
+  }
+
+  else if (mensaje.startsWith("SPEED:")) {
+    int nuevaVelocidad = mensaje.substring(6).toInt();
+
+    velocidad = constrain(nuevaVelocidad, 0, 100);
+
+    if (velocidad == 0) {
+      girando = false;
+    }
+
+    actualizarServo();
+  }
+
+  else if (mensaje == "DIR:CW") {
+    direccionHorario = true;
+    actualizarServo();
+  }
+
+  else if (mensaje == "DIR:CCW") {
+    direccionHorario = false;
+    actualizarServo();
   }
 
   (void)topic;
