@@ -93,9 +93,24 @@ void actualizarServo() {
 
     digitalWrite(PIN_LED, HIGH);
 
-    servo360.writeMicroseconds(GIRAR);
+    int pulso = map(
+      velocidad,
+      0,
+      100,
+      1500,
+      2000
+    );
 
-    Serial.println("GIRANDO");
+    if (!direccionHorario) {
+      pulso = 3000 - pulso;
+    }
+
+    servo360.writeMicroseconds(pulso);
+
+    Serial.print("GIRANDO - Velocidad: ");
+    Serial.print(velocidad);
+    Serial.print("% - Pulso: ");
+    Serial.println(pulso);
 
   } else {
 
