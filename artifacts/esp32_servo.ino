@@ -353,10 +353,12 @@ void restablecerWiFi() {
 // Pulsacion de 5 segundos: restablece el Wi-Fi.
 // =====================================================
 
+
 void leerBoton() {
   bool lectura = digitalRead(PIN_BOTON);
   unsigned long ahora = millis();
 
+  // Detectar la primera pulsacion
   if (lectura == LOW && !botonPresionado) {
     delay(TIEMPO_DEBOUNCE);
 
@@ -364,23 +366,32 @@ void leerBoton() {
       botonPresionado = true;
       pulsacionLargaAtendida = false;
       inicioBoton = millis();
+
+      Serial.println("Boton presionado");
+      Serial.println("Mantener 5 segundos para borrar Wi-Fi");
     }
   }
 
+  // Comprobar si sigue presionado
   if (botonPresionado && digitalRead(PIN_BOTON) == LOW) {
-    if (
-      !pulsacionLargaAtendida &&
-      ahora - inicioBoton >= TIEMPO_RESET_WIFI
-    ) {
+    ahora = millis();
+
+    if (!pulsacionLargaAtendida &&
+        ahora - inicioBoton >= TIEMPO_RESET_WIFI) {
       pulsacionLargaAtendida = true;
+
+      Serial.println("Pulsacion larga: restableciendo Wi-Fi");
       restablecerWiFi();
     }
   }
 
-  if (botonPresionado && lectura == HIGH) {
+  // Detectar cuando se suelta el boton
+  if (botonPresionado && digitalRead(PIN_BOTON) == HIGH) {
     botonPresionado = false;
 
     if (!pulsacionLargaAtendida) {
+      Serial.println("Pulsacion corta");
+
       if (girando) {
         apagarServo();
       } else {
@@ -389,6 +400,7 @@ void leerBoton() {
     }
   }
 }
+
 
 // =====================================================
 // CONFIGURAR PARADA AUTOMATICA
